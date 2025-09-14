@@ -1,4 +1,5 @@
-import User from "../models/user.model.js";
+import User from "../models/user.models.js";
+import Tenant from "../models/tenant.models.js"; 
 import { ApiError } from "../utilities/ApiError.js";
 import { ApiResponse } from "../utilities/ApiResponse.js";
 import { AsyncHandler } from "../utilities/AsyncHandler.js";
@@ -39,7 +40,6 @@ export const login = AsyncHandler(async (req, res) => {
             plan: user.tenantId.plan,
         },
     }
-
 
     return res.status(200).cookie("Token", token, Options).json(new ApiResponse(200, LoggedInUser, "LOGGED IN SUCCESSFULLY"));
 });
