@@ -1,5 +1,5 @@
 import User from "../models/user.models.js";
-import Tenant from "../models/tenant.models.js"; 
+import Tenant from "../models/tenant.models.js";
 import { ApiError } from "../utilities/ApiError.js";
 import { ApiResponse } from "../utilities/ApiResponse.js";
 import { AsyncHandler } from "../utilities/AsyncHandler.js";
@@ -43,3 +43,41 @@ export const login = AsyncHandler(async (req, res) => {
 
     return res.status(200).cookie("Token", token, Options).json(new ApiResponse(200, LoggedInUser, "LOGGED IN SUCCESSFULLY"));
 });
+
+
+export const inviteUser = AsyncHandler(async (req, res) => {
+    const { email, role = "member", password = "password" } = req.body;
+    const { tenantId, role: userRole } = req.user;
+
+    if (userRole !== "admin") {
+        throw new ApiError(403, "Only admins can invite users");
+    }
+
+    if (!email) throw new ApiError(400, "Email is required");
+
+    const tenant = await Tenant.findById(tenantId);
+    if (!tenant) throw new ApiError(404, "Tenant not found");
+
+    const exists = await User.findOne({ email });
+    if (exists) throw new ApiError(400, "User with this email already exists");
+
+    if (!["member", "admin"].includes(role)) {
+        throw new ApiError(400, "Invalid role");
+    }
+
+    const newUser = await User.create({
+        email,
+        password,
+        role,
+        tenantId,
+    });
+
+    await newUser.save();
+
+    const NPuser = await User.findById(newUser._id).select("-password");
+
+    return res
+        .status(201)
+        .json(new ApiResponse(201, NPuser, "User invited"));
+});
+

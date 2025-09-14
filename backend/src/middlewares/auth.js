@@ -27,7 +27,7 @@ const AuthToken = AsyncHandler(async (req, _, next) => {
             role: decoded.role,
         };
 
-        const user = await User.findById(decoded.userId).select("-passwordHash");
+        const user = await User.findById(decoded.userId).select("-password");
         if (!user) throw new ApiError(401, "Invalid Access Token");
 
         req.user = {
