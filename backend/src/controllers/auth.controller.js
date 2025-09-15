@@ -81,3 +81,16 @@ export const inviteUser = AsyncHandler(async (req, res) => {
         .json(new ApiResponse(201, NPuser, "User invited"));
 });
 
+export const Check = AsyncHandler(async (req, res) => {
+    try {
+        const data = await User.findOne({ email: req.user.email }).populate("tenantId").select("-password");
+        res.status(200).json(new ApiResponse(200, data, "Token is valid"));
+    } catch (error) {
+        throw new ApiError(500, "Internal ERROR")
+    }
+});
+
+export const logout = AsyncHandler(async (req, res) => {
+    res.clearCookie("Token", Options);
+    return res.status(200).json(new ApiResponse(200, null, "Logged Out Succesfully."));
+})
