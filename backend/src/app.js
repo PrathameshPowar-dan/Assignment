@@ -8,13 +8,11 @@ import TenantRouter from "./routes/tenant.routes.js";
 const app = express();
 
 app.use(cors({
-    origin: process.env.NODE_ENV === "production" 
-        ? [
-            "https://your-frontend-app.vercel.app", 
-            "https://*.vercel.app",
-            "https://*.vercel.app"
-          ] 
-        : "http://localhost:5173",
+    origin: [
+        "http://localhost:5173",
+        "https://*.vercel.app",
+        "https://*-your-username.vercel.app"
+    ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
