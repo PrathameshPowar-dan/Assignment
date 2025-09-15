@@ -11,7 +11,7 @@ app.use(cors({
     origin: [
         "http://localhost:5173",
         "https://*.vercel.app",
-        "https://assignment-frontend-iota-eight.vercel.app"
+        "https://assignment-frontend-ten-chi.vercel.app"
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
