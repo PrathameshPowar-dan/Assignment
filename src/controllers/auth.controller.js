@@ -83,14 +83,33 @@ export const inviteUser = AsyncHandler(async (req, res) => {
 
 export const Check = AsyncHandler(async (req, res) => {
     try {
-        const data = await User.findOne({ email: req.user.email }).populate("tenantId").select("-password");
-        res.status(200).json(new ApiResponse(200, data, "Token is valid"));
+        if (!req.user || !req.user.userId) {
+            throw new ApiError(401, "User not authenticated");
+        }
+
+        const data = await User.findById(req.user.userId)
+            .populate("tenantId")
+            .select("-password");
+
+        if (!data) {
+            throw new ApiError(404, "User not found");
+        }
+
+        const userData = {
+            _id: data._id,
+            email: data.email,
+            role: data.role,
+            tenantId: {
+                _id: data.tenantId._id,
+                slug: data.tenantId.slug,
+                name: data.tenantId.name,
+                plan: data.tenantId.plan,
+            },
+        };
+
+        res.status(200).json(new ApiResponse(200, userData, "Token is valid"));
     } catch (error) {
-        throw new ApiError(500, "Internal ERROR")
+        console.error("Check error:", error);
+        throw new ApiError(500, "Internal server error in authentication check");
     }
 });
-
-export const logout = AsyncHandler(async (req, res) => {
-    res.clearCookie("Token", Options);
-    return res.status(200).json(new ApiResponse(200, null, "Logged Out Succesfully."));
-})

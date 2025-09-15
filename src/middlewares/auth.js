@@ -16,30 +16,37 @@ const AuthToken = AsyncHandler(async (req, _, next) => {
         }
 
         if (!token) {
-            throw new ApiError(401, "Unauthorized access");
+            throw new ApiError(401, "Unauthorized access - No token provided");
         }
 
         const decoded = JWT.verify(token, process.env.JWT_SECRET_TOKEN);
 
-        req.user = {
-            userId: decoded.userId,
-            tenantId: decoded.tenantId,
-            role: decoded.role,
-        };
-
-        const user = await User.findById(decoded.userId).select("-password");
-        if (!user) throw new ApiError(401, "Invalid Access Token");
+        const user = await User.findById(decoded.userId)
+            .populate("tenantId")
+            .select("-password");
+            
+        if (!user) {
+            throw new ApiError(401, "Invalid Access Token - User not found");
+        }
 
         req.user = {
             userId: user._id,
-            tenantId: user.tenantId,
+            tenantId: user.tenantId._id,
             role: user.role,
             email: user.email,
         };
 
         next();
     } catch (err) {
-        throw new ApiError(401, "Invalid or expired token");
+        console.error("AuthToken error:", err.message);
+        
+        if (err.name === "JsonWebTokenError") {
+            throw new ApiError(401, "Invalid token");
+        } else if (err.name === "TokenExpiredError") {
+            throw new ApiError(401, "Token expired");
+        } else {
+            throw new ApiError(401, "Invalid or expired token");
+        }
     }
 });
 
