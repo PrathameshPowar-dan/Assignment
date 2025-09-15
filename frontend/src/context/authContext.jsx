@@ -1,6 +1,10 @@
 import axios from "axios";
 import { createContext, useEffect, useState } from "react";
 
+const API_BASE = window.location.hostname.includes('localhost') 
+  ? 'http://localhost:5000' 
+  : 'https://your-backend-app.vercel.app';
+
 export const Context = createContext(null);
 
 export const ContextProvider = (props) => {
@@ -9,19 +13,16 @@ export const ContextProvider = (props) => {
 
     const CheckAuth = async () => {
         try {
-            const response = await axios.get("http://localhost:5000/api/user/check", {
+            const response = await axios.get(`${API_BASE}/api/user/check`, {
                 withCredentials: true,
             });
             
-            console.log("CheckAuth response:", response);
-            
             if (response.data.success && response.data.data) {
-                // The tenant data is already in response.data.data.tenantId
                 const userData = {
                     email: response.data.data.email,
                     role: response.data.data.role,
-                    userId: response.data.data.userId,
-                    tenant: response.data.data.tenantId // This is the full tenant object
+                    userId: response.data.data._id,
+                    tenant: response.data.data.tenantId
                 };
                 
                 setUser(userData);
@@ -45,7 +46,7 @@ export const ContextProvider = (props) => {
 
     const logout = async () => {
         try {
-            await axios.post("http://localhost:5000/api/user/logout", {}, {
+            await axios.post(`${API_BASE}/api/user/logout`, {}, {
                 withCredentials: true
             });
         } catch (error) {

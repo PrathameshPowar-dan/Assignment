@@ -3,12 +3,44 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { Context } from "../context/authContext.jsx";
 
+const API_BASE = window.location.hostname.includes('localhost')
+  ? 'http://localhost:5000'
+  : 'https://your-backend-app.vercel.app';
+
 export default function Notes() {
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState({ title: "", content: "" });
   const [notesLoading, setNotesLoading] = useState(true);
-  const { user, loading, logout } = useContext(Context);
+  const [upgrading, setUpgrading] = useState(false);
+  const [error, setError] = useState("");
+  const { user, loading, logout, CheckAuth } = useContext(Context);
   const navigate = useNavigate();
+
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("member");
+  const [inviting, setInviting] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+
+  const handleInvite = async () => {
+    if (!inviteEmail) return;
+
+    setInviting(true);
+    try {
+      await axios.post(
+        `${API_BASE}/api/user/invite`,
+        { email: inviteEmail, role: inviteRole },
+        { withCredentials: true }
+      );
+      alert("User invited successfully!");
+      setInviteEmail("");
+      setInviteRole("member");
+      setShowInviteModal(false);
+    } catch (err) {
+      alert(err.response?.data?.message || "Invitation failed");
+    } finally {
+      setInviting(false);
+    }
+  };
 
   useEffect(() => {
     if (!user && !loading) {
@@ -22,7 +54,7 @@ export default function Notes() {
 
   const fetchNotes = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/note", {
+      const res = await axios.get(`${API_BASE}/api/note`, {
         withCredentials: true,
       });
       setNotes(res.data.data);
@@ -35,23 +67,53 @@ export default function Notes() {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5000/api/note", newNote, {
+      await axios.post(`${API_BASE}/api/note`, newNote, {
         withCredentials: true,
       });
       setNewNote({ title: "", content: "" });
       fetchNotes();
     } catch (err) {
-      alert(err.response?.data?.message || "Error creating note");
+      const errorMsg = err.response?.data?.message || "Error creating note";
+      alert(errorMsg);
+
+      if (errorMsg.includes("Upgrade to Pro")) {
+        setError(errorMsg);
+      }
+    }
+  };
+
+  const handleUpgrade = async () => {
+    if (!user?.tenant?.slug) return;
+
+    setUpgrading(true);
+    setError("");
+
+    try {
+      await axios.post(
+        `${API_BASE}/api/tenants/${user.tenant.slug}/upgrade`,
+        {},
+        { withCredentials: true }
+      );
+      alert("Upgrade successful! Your account has been upgraded to Pro.");
+
+      await CheckAuth();
+      fetchNotes();
+    } catch (err) {
+      setError(err.response?.data?.message || "Upgrade failed");
+    } finally {
+      setUpgrading(false);
     }
   };
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/api/note/${id}`, {
+      await axios.delete(`${API_BASE}/api/note/${id}`, {
         withCredentials: true,
       });
       fetchNotes();
-    } catch { }
+    } catch (err) {
+      alert(err.response?.data?.message || "Error deleting note");
+    }
   };
 
   const handleLogout = async () => {
@@ -78,31 +140,133 @@ export default function Notes() {
     );
   }
 
+  const isAtFreeLimit = user.tenant?.plan === "free" && notes.length >= 3;
+  const canCreateNotes = !isAtFreeLimit || user.tenant?.plan === "pro";
+
   return (
     <div className="container py-5">
+      {/* Invite User Modal */}
+      {showInviteModal && (
+        <div className="modal show d-block" tabIndex="-1">
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Invite User</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowInviteModal(false)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <label className="form-label">Email Address</label>
+                  <input
+                    type="email"
+                    className="form-control"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="Enter user's email"
+                    required
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Role</label>
+                  <select
+                    className="form-select"
+                    value={inviteRole}
+                    onChange={(e) => setInviteRole(e.target.value)}
+                  >
+                    <option value="member">Member</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowInviteModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleInvite}
+                  disabled={inviting || !inviteEmail}
+                >
+                  {inviting ? "Inviting..." : "Invite User"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal backdrop */}
+      {showInviteModal && <div className="modal-backdrop show"></div>}
+
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 className="fw-bold mb-1">{user.tenant?.name || "My Tenant"}</h2>
           <p className="text-muted mb-0">Logged in as {user.email}</p>
         </div>
         <div>
-          <span className="badge bg-success me-2">
+          <span className={`badge ${user.tenant?.plan === "pro" ? "bg-success" : "bg-secondary"} me-2`}>
             Plan: {user.tenant?.plan}
           </span>
           <span className="badge bg-primary">Role: {user.role}</span>
         </div>
       </div>
 
-      {user.tenant?.plan === "free" &&
-        notes.length >= 3 &&
-        user.role === "admin" && (
-          <div className="alert alert-warning d-flex justify-content-between align-items-center">
-            <span>You’ve reached the free plan limit of 3 notes.</span>
-            <button className="btn btn-sm btn-warning">Upgrade to Pro</button>
-          </div>
-        )}
+      {error && (
+        <div className="alert alert-danger">
+          {error}
+        </div>
+      )}
 
-      {!(user.tenant?.plan === "free" && notes.length >= 3) && (
+      {isAtFreeLimit && (
+        <div className="alert alert-warning d-flex justify-content-between align-items-center">
+          <span>You've reached the free plan limit of 3 notes.</span>
+          {user.role === "admin" ? (
+            <button
+              className="btn btn-sm btn-warning"
+              onClick={handleUpgrade}
+              disabled={upgrading}
+            >
+              {upgrading ? "Upgrading..." : "Upgrade to Pro"}
+            </button>
+          ) : (
+            <span>Contact your admin to upgrade</span>
+          )}
+        </div>
+      )}
+
+      {user.role === "admin" && (
+        <div className="card shadow-sm mb-4">
+          <div className="card-body">
+            <h5 className="card-title mb-3">Admin Actions</h5>
+            {user.tenant?.plan === "free" && (
+              <button
+                className="btn btn-warning me-2"
+                onClick={handleUpgrade}
+                disabled={upgrading}
+              >
+                {upgrading ? "Upgrading..." : "Upgrade to Pro"}
+              </button>
+            )}
+            <button
+              className="btn btn-outline-primary"
+              onClick={() => setShowInviteModal(true)}
+            >
+              Invite User
+            </button>
+          </div>
+        </div>
+      )}
+
+      {canCreateNotes && (
         <div className="card shadow-sm mb-4">
           <div className="card-body">
             <h5 className="card-title mb-3">Create a Note</h5>
@@ -143,7 +307,7 @@ export default function Notes() {
         {notes.length === 0 ? (
           <div className="col-12">
             <div className="alert alert-info text-center">
-              No notes yet. Create your first note above!
+              No notes yet. {canCreateNotes ? "Create your first note above!" : "Upgrade to create more notes."}
             </div>
           </div>
         ) : (
