@@ -1,33 +1,52 @@
 import { app } from "./app.js";
 import mongoose from "mongoose";
 import { DB_NAME } from "./constant.js";
-import { config } from "dotenv";
-
-config();
 
 const DataBaseConnection = async () => {
     try {
-        await mongoose.connect(`${process.env.MONGODB_URL}/${DB_NAME}`)
+        const connectionString = process.env.MONGODB_URL 
+            ? `${process.env.MONGODB_URL}/${DB_NAME}`
+            : `mongodb://localhost:27017/${DB_NAME}`;
+            
+        await mongoose.connect(connectionString);
         console.log('MongoDB Connected');
+        return true;
     } catch (error) {
         console.error("MongoDB connection failed:", error);
-        process.exit(1);
+        return false;
     }
 }
 
-DataBaseConnection().then(() => {
-    app.listen(process.env.PORT, () => {
-        console.log(`Server is active on port: ${process.env.PORT}`)
-    })
-})
-    .catch((error) => {
-        console.log(`Error while connecting server: ${error}`)
-    })
+let isDBConnected = false;
+DataBaseConnection().then(connected => {
+    isDBConnected = connected;
+});
 
 app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
+    res.json({ 
+        status: "ok", 
+        database: isDBConnected ? "connected" : "disconnected",
+        timestamp: new Date().toISOString()
+    });
 });
 
 app.get("/", (req, res) => {
-  res.json({ status: "HELLO WORLD" });
+    res.json({ status: "HELLO WORLD", message: "Backend is running!" });
+});
+
+export default async function handler(req, res) {
+
+    if (!isDBConnected && mongoose.connection.readyState === 0) {
+        isDBConnected = await DataBaseConnection();
+    }
+    
+    return app(req, res);
+}
+
+app.use((err, req, res, next) => {
+    console.error('Error:', err);
+    res.status(500).json({ 
+        success: false, 
+        message: 'Internal server error'
+    });
 });
