@@ -24,7 +24,6 @@ export const ContextProvider = (props) => {
                     tenant: response.data.data.tenantId // This is the full tenant object
                 };
                 
-                // Store both in context and localStorage
                 setUser(userData);
                 localStorage.setItem("user", JSON.stringify(userData));
                 setLoading(false);
@@ -58,13 +57,11 @@ export const ContextProvider = (props) => {
     };
 
     useEffect(() => {
-        // Check if user exists in localStorage on initial load
         const storedUser = localStorage.getItem("user");
         if (storedUser) {
             setUser(JSON.parse(storedUser));
         }
         
-        // Then verify with server
         CheckAuth();
     }, []);
 

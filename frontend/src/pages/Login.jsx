@@ -33,30 +33,28 @@ function Login() {
             if (res.status === 200 && res.data.data) {
                 alert("Login successful");
                 
-                // Use the actual structure from the response
                 const userData = {
                     email: res.data.data.email,
                     role: res.data.data.role,
                     userId: res.data.data.userId,
-                    tenant: res.data.data.tenantId // Full tenant object
+                    tenant: res.data.data.tenantId 
                 };
                 
                 localStorage.setItem("user", JSON.stringify(userData));
-                window.location.href = "/notes"; // Use full page reload instead of navigate
+                window.location.href = "/notes"; 
             }
         } catch (err) {
             setError(err.response?.data?.message || "Login failed");
         }
     };
 
-    // Only redirect if user exists AND we're not still loading
+
     useEffect(() => {
         if (user && !loading) {
             navigate("/notes");
         }
     }, [user, loading, navigate]);
 
-    // Show loading state while checking auth
     if (loading) {
         return (
             <div className="d-flex vh-100 justify-content-center align-items-center">

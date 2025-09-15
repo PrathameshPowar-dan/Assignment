@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 
 import User from "./models/user.models.js";
 import Tenant from "./models/tenant.models.js";
+import Note from "./models/note.models.js";
 import { DB_NAME } from "./constant.js";
 
 dotenv.config();
@@ -15,6 +16,7 @@ const seed = async () => {
 
     await User.deleteMany({});
     await Tenant.deleteMany({});
+    await Note.deleteMany({});
 
 
     const acmeTenant = await Tenant.create({
